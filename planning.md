@@ -17,6 +17,7 @@ You must have at least 3 tools. The three required tools are listed — add any 
 **What it does:**
 <!-- Describe what this tool does in 1–2 sentences -->
 
+
 **Input parameters:**
 <!-- List each parameter, its type, and what it represents -->
 - `description` (str): ...
@@ -138,12 +139,34 @@ Write out what a full user interaction looks like from start to finish — tool 
 
 **Step 1:**
 <!-- What does the agent do first? Which tool is called? With what input? -->
+The agent will first call the `search_listings` tool to find available inventory that matches the user's explicit request
+
+Input: search_listings(
+    description="vintage graphic tee",
+    size=None
+    max_price=30,
+)
+
+Output: Returns matching listings from `listings.json`. The top result is a "Faded Band Tee - $22, Depop, Good condition."
 
 **Step 2:**
 <!-- What happens next? What was returned from step 1? What tool is called now? -->
+Next, the agent takes the top project result from Step 1 and passes it to `suggest_outfit` tool to generate an outfit
+
+Input: suggest_outfit(
+     new_item="Faded Band Tee", 
+     wardrobe=["baggy jeans", "chunky sweaters"])
+
+Output: Returns a styling recommendation "Pair this with your wide-leg jeans and platform Docs for a classic 90s grunge look. Roll the sleeves once and tuck the front corner slightly for shape."
 
 **Step 3:**
 <!-- Continue until the full interaction is complete -->
+Lastly, the `create_fit_card tool` will generate the user a complete description/instagram caption of their final outfit. 
+
+
+Input: create_fit_card(outfit="90s grunge look with wide-leg jeans, platform Docs, and Faded Band Tee", new_item="Faded Band Tee")
 
 **Final output to user:**
 <!-- What does the user actually see at the end? -->
+
+Output: "thrifted this faded band tee off depop for $22 and honestly it was made for my wide-legs 🖤 full look in my stories"
