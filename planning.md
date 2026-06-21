@@ -86,6 +86,7 @@ If the outfit data is incomplete, return a descriptive error string.
 2. **Parsing Phase**
      - Extract `description`, `size`, and `max_price` from `session["query"]`.
      - Store these in `session["parsed"]` (e.g., as `{"description": "...", "size": "...", "max_price": ...}`).
+     - **Parsing approach:** The query is parsed using the Groq LLM (`llama-3.3-70b-versatile`) with `temperature=0`. The LLM is prompted to return a JSON object with exactly three keys: `description`, `size`, and `max_price`. Temperature is set to 0 because parsing requires deterministic fact extraction — the same query should always produce the same parameters. Higher temperatures would introduce randomness and could cause inconsistent search results across runs.
      
 3. **Search Phase (Tool 1)**
      - Call `search_listings(description=session["parsed"]["description"], size=session["parsed"]["size"], max_price=session["parsed"]["max_price"])`.

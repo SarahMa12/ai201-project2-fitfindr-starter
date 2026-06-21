@@ -18,7 +18,9 @@ Usage (once implemented):
     print(result["error"])   # None on success
 """
 
+import json
 from tools import search_listings, suggest_outfit, create_fit_card
+from tools import _get_groq_client
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -92,9 +94,72 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     Before writing code, complete the Planning Loop and State Management sections
     of planning.md — your implementation should match what you described there.
     """
-    # TODO: implement the planning loop
+    # Step 1: Initialize session
     session = _new_session(query, wardrobe)
-    session["error"] = "Planning loop not yet implemented."
+
+    # Step 2: Parse the query using the LLM to extract description, size, and max_price
+    client = _get_groq_client()
+    parse_response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Extract search parameters from this clothing query: \"{query}\"\n\n"
+                "Return a JSON object with exactly these keys:\n"
+                "- description (str): the item keywords, style, or type being searched\n"
+                "- size (str or null): clothing size if mentioned, otherwise null\n"
+                "- max_price (float or null): maximum price if mentioned, otherwise null\n\n"
+                "Return only the JSON object, no explanation."
+            )
+        }],
+        temperature=0,
+    )
+    # Strip markdown code fences if the LLM wraps its response in ```json ... ```
+    raw = parse_response.choices[0].message.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    session["parsed"] = json.loads(raw.strip())
+
+    # Step 3: Call search_listings and store results
+    session["search_results"] = search_listings(
+        description=session["parsed"]["description"],
+        size=session["parsed"].get("size"),
+        max_price=session["parsed"].get("max_price"),
+    )
+
+    # Condition Check 1: no results found
+    if not session["search_results"]:
+        session["error"] = "No matching listings found for your query."
+        return session
+
+    # Step 4: Select the top result
+    session["selected_item"] = session["search_results"][0]
+
+    # Step 5: Call suggest_outfit and store result
+    session["outfit_suggestion"] = suggest_outfit(
+        new_item=session["selected_item"],
+        wardrobe=session["wardrobe"],
+    )
+
+    # Condition Check 2: outfit suggestion is empty
+    if not session["outfit_suggestion"] or not session["outfit_suggestion"].strip():
+        session["error"] = "Failed to generate outfit suggestion."
+        return session
+
+    # Step 6: Call create_fit_card and store result
+    session["fit_card"] = create_fit_card(
+        outfit=session["outfit_suggestion"],
+        new_item=session["selected_item"],
+    )
+
+    # Condition Check 3: fit card is empty
+    if not session["fit_card"] or not session["fit_card"].strip():
+        session["error"] = "Failed to generate fit card."
+        return session
+
+    # Step 7: Return completed session
     return session
 
 
